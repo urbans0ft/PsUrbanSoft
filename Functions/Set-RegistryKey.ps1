@@ -61,7 +61,7 @@ function Set-RegistryKey {
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'WithData')]
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'WithName')]
         [string]$KeyName,
-        [Parameter(Mandatory, ParameterSetName = 'WithName')]
+        [Parameter(Mandatory, Position = 1, ParameterSetName = 'WithName')]
         [string]$Name,
         [Parameter(ValueFromPipelineByPropertyName)]
         [ValidateSet('REG_SZ', 'REG_MULTI_SZ', 'REG_EXPAND_SZ', 'REG_DWORD', 'REG_QWORD', 'REG_BINARY', 'REG_NONE' )]
