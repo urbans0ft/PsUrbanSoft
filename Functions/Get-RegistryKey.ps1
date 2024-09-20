@@ -58,15 +58,14 @@ reg query /?
 .LINK
 https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/reg-query
 #>
-function Get-RegistryKey
-{
+function Get-RegistryKey {
     [OutputType([Hashtable])]
     param(
         [Parameter(Mandatory)]
         [string]$KeyName,
         [string]$ValueName,
         [ValidateSet('REG_SZ', 'REG_MULTI_SZ', 'REG_EXPAND_SZ',
-        'REG_DWORD', 'REG_QWORD', 'REG_BINARY', 'REG_NONE')]
+            'REG_DWORD', 'REG_QWORD', 'REG_BINARY', 'REG_NONE')]
         [string]$Type,
         [string]$Data
     )
@@ -82,15 +81,15 @@ function Get-RegistryKey
     } |
     Where-Object {
         # filter the results if ValueName was set
-        if ($PSBoundParameters.ContainsKey('ValueName')) {$_.Name -ilike $ValueName} else {$true}
+        if ($PSBoundParameters.ContainsKey('ValueName')) { $_.Name -ilike $ValueName } else { $true }
     } |
     Where-Object {
         # filter the results if Type was set
-        if ($PSBoundParameters.ContainsKey('Type')) {$_.Type -ieq $Type} else {$true}
+        if ($PSBoundParameters.ContainsKey('Type')) { $_.Type -ieq $Type } else { $true }
     } |
     Where-Object {
         # filter the results if Data was set
-        if ($PSBoundParameters.ContainsKey('Data')) {$_.Data -ilike $Data} else {$true}
+        if ($PSBoundParameters.ContainsKey('Data')) { $_.Data -ilike $Data } else { $true }
     } |
     ForEach-Object {
         # create a hashtable instead of an array of objects
@@ -98,7 +97,10 @@ function Get-RegistryKey
             'Type' = $($_.Type)
             'Data' = $($_.Data)
         }
-    } -Begin {[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseDeclaredVarsMoreThanAssignments", "", Scope = "Variable", Target = "registryKey")]$registryKey = @{}} -End {$registryKey}
+    } -Begin {
+        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseDeclaredVarsMoreThanAssignments", "", Scope = "Variable", Target = "registryKey")]
+        $registryKey = @{}
+    } -End { $registryKey }
 }
 
 
