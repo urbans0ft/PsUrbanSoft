@@ -41,6 +41,14 @@ Set a new Key with a REG_MULTI_SZ property 'MyValues' set to '1', '2', '3' and '
 .EXAMPLE
 Set-RegistryKey "HKCU\NewKey" -Name "MyValues" -Data "1,2,3,4,5" -Type REG_MULTI_SZ  -Separator ',' -Force
 Creates the key-value even if it already exists (see previous example).
+.EXAMPLE
+[PSCustomObject]@{Data = 'NewValue'} | Set-RegistryKey "HKCU\NewKey"
+.EXAMPLE
+[PSCustomObject]@{Data = 'NewValue'; Type = 'REG_SZ'} | Set-RegistryKey "HKCU\NewKey"
+.EXAMPLE
+[PSCustomObject]@{Data = 'NewValue'} | Set-RegistryKey "HKCU\NewKey" "NewName"
+.EXAMPLE
+[PSCustomObject]@{Data = 'NewValue'; Type = 'REG_SZ'} | Set-RegistryKey "HKCU\NewKey" "NewName"
 .NOTES
 Wrapper around the `reg add` command.
 .LINK
