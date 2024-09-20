@@ -3,15 +3,6 @@
 Returns a hashtable of the environment variables.
 .DESCRIPTION
 Returns a hashtable of the environment variables by querying the registry.
-.PARAMETER KeyName
-[\\Machine\]FullKey
-Machine - Name of remote machine, omitting defaults to the
-        current machine. Only HKLM and HKU are available on
-        remote machines
-FullKey - in the form of ROOTKEY\SubKey name
-    ROOTKEY - [ HKLM | HKCU | HKCR | HKU | HKCC ]
-    SubKey  - The full name of a registry key under the
-            selected ROOTKEY
 .PARAMETER Target
 One of [System.EnvironmentVariableTarget] enumeration.
 .OUTPUTS
@@ -60,5 +51,4 @@ function Get-EnvironmentVariable {
         }
         default { throw "Target '$_' is not supported. " }
     }
-    
 }
