@@ -121,18 +121,3 @@ function Set-RegistryKey {
         }
     }
 }
-
-function Test-NameFromPipeline {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory, Position = 0, ParameterSetName = 'WithName')]
-        [string]$KeyName,
-        [Parameter(ValueFromPipelineByPropertyName)]
-        $Type,
-        [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
-        $Data
-    )
-    process {
-        Write-Host "Huhu $_"
-    }
-}
