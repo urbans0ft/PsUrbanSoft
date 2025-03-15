@@ -72,6 +72,8 @@ ProcessorArchitecture = 'None'
 FunctionsToExport = @(
     'Get-EnvironmentVariable',
     'Get-RegistryKey',
+    'Get-UserInput',
+    'Show-MessageBox',
     'Set-RegistryKey'
 )
 
