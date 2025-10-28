@@ -1,10 +1,14 @@
 function Get-FFmpegLoudNorm {
     <#
     .SYNOPSIS
-        A short one-line action-based description, e.g. 'Tests if a function is valid'
+        Get EBU R128 loudness normalization values.
+        This algorithm can target IL, LRA, and maximum true peak. In dynamic mode, to accurately
+        detect true peaks, the audio stream will be upsampled to 192 kHz.
     .DESCRIPTION
-        A longer description of the function, its purpose, common use cases, etc.
+        The method uses ffmpeg command to geht the parsed loudnorm values of a given input file.
+        Those values can be used in a second run to normalize the audio file.
     .PARAMETER InputUrl
+        The input file.
     .PARAMETER IntegratedLoudness
         Set integrated loudness target. Range is -70.0 - -5.0. Default value is -24.0.
         -23 LUFS for broadcast; -16 LUFS for podcasts/music-consumption.
@@ -19,8 +23,6 @@ function Get-FFmpegLoudNorm {
         stereo system, its EBU R128 measurement will be perceptually incorrect. If set to true,
         this option will compensate for this effect. Multi-channel input files are not affected
         by this option. Options are true or false. Default is false.
-    .NOTES
-        Information or caveats about the function e.g. 'This function is not supported in Linux'
     .LINK
         https://www.ffmpeg.org/ffplay-all.html#loudnorm
     .EXAMPLE
@@ -37,6 +39,9 @@ function Get-FFmpegLoudNorm {
         output_thresh      : -27.87
         normalization_type : dynamic
         target_offset      : 0.69
+    .EXAMPLE
+        Get-ChildItem *.mp3 | Get-FFmpegLoudNorm -IntegratedLoudness -16
+        Output all used ffmpeg calls and the corresponding json output.
     #>
     
     [CmdletBinding()]
