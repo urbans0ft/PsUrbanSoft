@@ -66,7 +66,9 @@ function Get-FFmpegLoudNorm {
     }
         
     process {
-        $ffmpegParams = @(
+        $inputObjects = @{
+            id = $inputObjects.Count + 1
+            ffmpegParams = @(
             '-i', $InputUrl,
             '-vn', # disable video processing
             '-filter:a', # filter audio (alias -af)
@@ -74,24 +76,22 @@ function Get-FFmpegLoudNorm {
             '-f', 'null', # force output format (see: https://www.ffmpeg.org/ffmpeg.html#Main-options)
             '-'
         )
-        [void]$ffmpegParamsList.Add($ffmpegParams)
+        }
+        [void]$ffmpegParamsList.Add($inputObjects)
     }
         
     end {
-        Write-Verbose "Processing $($ffmpegParamsList.Count) files..."
+        Write-Verbose "Processing $($inputObjects.Keys.Count) files..."
         
         # Create synchronized hashtable for thread-safe counter
-        $progress = [hashtable]::Synchronized(@{
-            Lock       = [System.Threading.Mutex]::new()
-            InProgress = 0
-            Completed  = 0
-            Total      = $ffmpegParamsList.Count
-        })
+        $progress = [hashtable]::Synchronized(@{})
         
-        $ffmpegParamsList | ForEach-Object -Parallel {
-            $ffmpegParams = $_
+        $job = $inputObjects | ForEach-Object -AsJob -Parallel {
+            $ffmpegParams = $_.ffmpegParams
+            $progress = $using:progress
 
             Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
+            $progress[$_.id] = 'In Progress'
             $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
             $withinJson = $false
             $ret = $stdouterr | ForEach-Object {
@@ -113,7 +113,11 @@ function Get-FFmpegLoudNorm {
             $ret
         }
 
-        # Complete the progress bar
-        Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "Completed" -Id 0 -Completed
+        while ($job.State -ne 'Completed') {
+            $progress.Keys | ForEach-Object {
+                Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "Processing $($_)..." -Id $_
+            }
+            Start-Sleep -Milliseconds 250
+        }
     }
 }
