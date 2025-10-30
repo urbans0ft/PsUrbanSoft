@@ -62,6 +62,7 @@ function Get-FFmpegLoudNorm {
         if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
             throw "Command 'ffmpeg' not found!"
         }
+        [Collections.ArrayList]$ffmpegParamsList = @()
     }
         
     process {
@@ -73,23 +74,46 @@ function Get-FFmpegLoudNorm {
             '-f', 'null', # force output format (see: https://www.ffmpeg.org/ffmpeg.html#Main-options)
             '-'
         )
-        Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
-        $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
-        $withinJson = $false
-        $stdouterr | ForEach-Object {
-            if ($withinJson) {
-                $_
-                if ($_ -eq '}') {
-                    $withinJson = $false
-                }
-            }
-            if ($_ -like '`[Parsed_loudnorm_*') {
-                $withinJson = $true
-            }
-        } | ConvertFrom-Json
+        [void]$ffmpegParamsList.Add($ffmpegParams)
     }
         
     end {
-            
+        Write-Verbose "Processing $($ffmpegParamsList.Count) files..."
+        
+        # Create synchronized hashtable for thread-safe counter
+        $progress = [hashtable]::Synchronized(@{
+            Lock       = [System.Threading.Mutex]::new()
+            InProgress = 0
+            Completed  = 0
+            Total      = $ffmpegParamsList.Count
+        })
+        
+        $ffmpegParamsList | ForEach-Object -Parallel {
+            $ffmpegParams = $_
+
+            Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
+            $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
+            $withinJson = $false
+            $ret = $stdouterr | ForEach-Object {
+                if ($withinJson) {
+                    $_
+                    if ($_ -eq '}') {
+                        $withinJson = $false
+                    }
+                }
+                if ($_ -like '`[Parsed_loudnorm_*') {
+                    $withinJson = $true
+                }
+            } | ConvertFrom-Json
+
+            # Add the input file to the return object
+            $inputFile = $ffmpegParams[1]
+            $ret | Add-Member -MemberType NoteProperty -Name 'input' -Value (Get-Item $inputFile)
+
+            $ret
+        }
+
+        # Complete the progress bar
+        Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "Completed" -Id 0 -Completed
     }
 }
