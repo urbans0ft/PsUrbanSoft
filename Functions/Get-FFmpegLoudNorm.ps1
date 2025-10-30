@@ -62,13 +62,14 @@ function Get-FFmpegLoudNorm {
         if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
             throw "Command 'ffmpeg' not found!"
         }
-        [Collections.ArrayList]$ffmpegParamsList = @()
+
+        $inputObjects = [hashtable]::Synchronized(@{})
+        $inProgress   = [hashtable]::Synchronized(@{})
+        
     }
         
     process {
-        $inputObjects = @{
-            id = $inputObjects.Count + 1
-            ffmpegParams = @(
+        $inputObjects[($inputObjects.Keys.Count)] = @(
             '-i', $InputUrl,
             '-vn', # disable video processing
             '-filter:a', # filter audio (alias -af)
@@ -76,22 +77,18 @@ function Get-FFmpegLoudNorm {
             '-f', 'null', # force output format (see: https://www.ffmpeg.org/ffmpeg.html#Main-options)
             '-'
         )
-        }
-        [void]$ffmpegParamsList.Add($inputObjects)
     }
         
     end {
         Write-Verbose "Processing $($inputObjects.Keys.Count) files..."
-        
-        # Create synchronized hashtable for thread-safe counter
-        $progress = [hashtable]::Synchronized(@{})
-        
-        $job = $inputObjects | ForEach-Object -AsJob -Parallel {
-            $ffmpegParams = $_.ffmpegParams
-            $progress = $using:progress
+
+        $job = $inputObjects.GetEnumerator() | ForEach-Object -AsJob -Parallel {
+            $ffmpegParams = $_.Value
+            $inProgress   = $using:inProgress
+
+            $inProgress[$_.Key] = 'In Progres...'
 
             Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
-            $progress[$_.id] = 'In Progress'
             $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
             $withinJson = $false
             $ret = $stdouterr | ForEach-Object {
@@ -110,14 +107,17 @@ function Get-FFmpegLoudNorm {
             $inputFile = $ffmpegParams[1]
             $ret | Add-Member -MemberType NoteProperty -Name 'input' -Value (Get-Item $inputFile)
 
+            $inProgress.Remove($_.Key)
+
             $ret
         }
 
         while ($job.State -ne 'Completed') {
-            $progress.Keys | ForEach-Object {
-                Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "Processing $($_)..." -Id $_
+            $inProgress.Keys | %{
+                Write-Progress -Activity "ffmpeg loudnorm analysis $_" -Status "Processing $($_)..." -Id $_
             }
             Start-Sleep -Milliseconds 250
         }
+        $job | Wait-Job | Receive-Job
     }
 }
