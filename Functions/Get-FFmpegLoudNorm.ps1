@@ -67,6 +67,7 @@ function Get-FFmpegLoudNorm {
     process {
         $ffmpegParams = @(
             '-i', $InputUrl,
+            '-vn', # disable video processing
             '-filter:a', # filter audio (alias -af)
             "loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):print_format=json",
             '-f', 'null', # force output format (see: https://www.ffmpeg.org/ffmpeg.html#Main-options)
@@ -74,6 +75,7 @@ function Get-FFmpegLoudNorm {
         )
         Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
         $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
+        $withinJson = $false
         $stdouterr | ForEach-Object {
             if ($withinJson) {
                 $_
