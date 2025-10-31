@@ -63,8 +63,8 @@ function Get-FFmpegLoudNorm {
             throw "Command 'ffmpeg' not found!"
         }
 
-        $inputObjects = [hashtable]::Synchronized(@{})
-        $inProgress   = [hashtable]::Synchronized(@{})
+        $inputObjects  = @{}
+        $progressTable = [System.Collections.Concurrent.ConcurrentDictionary[int, hashtable]]::new()
         
     }
         
@@ -80,15 +80,21 @@ function Get-FFmpegLoudNorm {
     }
         
     end {
-        Write-Verbose "Processing $($inputObjects.Keys.Count) files..."
-
-        $job = $inputObjects.GetEnumerator() | ForEach-Object -AsJob -Parallel {
-            $ffmpegParams = $_.Value
-            $inProgress   = $using:inProgress
-
-            $inProgress[$_.Key] = 'In Progres...'
+        $jobs = $inputObjects.GetEnumerator() | ForEach-Object -AsJob -Parallel {
+            $id             = $_.Key
+            $ffmpegParams   = $_.Value
+            $file           = Get-Item $ffmpegParams[1]
+            $fileName       = $file.Name
+            $progressTable  = $using:progressTable
+            $progressTable[$id] = @{
+                Activity         = "$fileName"
+                Status           = "analyzing..."
+                Id               = $id
+                Completed        = $false
+            }
 
             Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
+            $progressTable[$id]['Status'] = "Analyzing ${fileName}..."
             $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
             $withinJson = $false
             $ret = $stdouterr | ForEach-Object {
@@ -107,17 +113,22 @@ function Get-FFmpegLoudNorm {
             $inputFile = $ffmpegParams[1]
             $ret | Add-Member -MemberType NoteProperty -Name 'input' -Value (Get-Item $inputFile)
 
-            $inProgress.Remove($_.Key)
+            $progressTable[$id]['Status']    = "finished"
+            $progressTable[$id]['Completed'] = $true
 
             $ret
         }
 
-        while ($job.State -ne 'Completed') {
-            $inProgress.Keys | %{
-                Write-Progress -Activity "ffmpeg loudnorm analysis $_" -Status "Processing $($_)..." -Id $_
+        while ($jobs.State -ne 'Completed') {
+            $totalCount     = $jobs.ChildJobs.Count
+            $completedCount = ($jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' }).Count
+            Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "$completedCount of $totalCount completed." -PercentComplete (($completedCount / $totalCount) * 100) -Id 255
+            $progressTable.Keys | %{
+                $progressSplate = $progressTable[$_]
+                Write-Progress @progressSplate -ParentId 255
             }
             Start-Sleep -Milliseconds 250
         }
-        $job | Wait-Job | Receive-Job
+        $jobs.ChildJobs.Output
     }
 }
