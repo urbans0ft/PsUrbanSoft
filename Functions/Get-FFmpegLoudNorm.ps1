@@ -126,11 +126,12 @@ function Get-FFmpegLoudNorm {
 
             Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "${percentComplete}% completed ($completedCount/$totalCount)" -PercentComplete $percentComplete -Id $totalCount
 
+            Start-Sleep -Milliseconds 100
+
             $progressTable.Keys | %{
                 $progressSplat = $progressTable[$_]
                 Write-Progress @progressSplat -ParentId $totalCount
             }
-            Start-Sleep -Milliseconds 100
         }
 
         # set all progresses to completed
