@@ -87,14 +87,14 @@ function Get-FFmpegLoudNorm {
             $fileName       = $file.Name
             $progressTable  = $using:progressTable
             $progressTable[$id] = @{
-                Activity         = "$fileName"
-                Status           = "analyzing..."
+                Activity         = "ffmpeg"
+                Status           = "$fileName"
                 Id               = $id
                 Completed        = $false
             }
 
-            Write-Host "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})" -ForegroundColor Green
-            $progressTable[$id]['Status'] = "Analyzing ${fileName}..."
+            $commandLine = "& ffmpeg $($ffmpegParams | %{ ($_ -match '\s') ? ("'$_'") : ($_)})"
+            Write-Host $commandLine -ForegroundColor Green
             $stdouterr = & ffmpeg $ffmpegParams 2>&1 | ForEach-Object { [string]$_ }
             $withinJson = $false
             $ret = $stdouterr | ForEach-Object {
@@ -113,22 +113,34 @@ function Get-FFmpegLoudNorm {
             $inputFile = $ffmpegParams[1]
             $ret | Add-Member -MemberType NoteProperty -Name 'input' -Value (Get-Item $inputFile)
 
-            $progressTable[$id]['Status']    = "finished"
-            $progressTable[$id]['Completed'] = $true
+            $progressTable[$id]['Status']          = "finished"
+            $progressTable[$id]['Completed']       = $true
 
-            $ret
+            Write-Output $ret -NoEnumerate
         }
 
+        $totalCount     = $jobs.ChildJobs.Count
         while ($jobs.State -ne 'Completed') {
-            $totalCount     = $jobs.ChildJobs.Count
-            $completedCount = ($jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' }).Count
-            Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "$completedCount of $totalCount completed." -PercentComplete (($completedCount / $totalCount) * 100) -Id 255
+            $completedCount  = ($jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' }).Count
+            $percentComplete = [int](($completedCount / $totalCount) * 100)
+
+            Write-Progress -Activity "ffmpeg loudnorm analysis" -Status "${percentComplete}% completed ($completedCount/$totalCount)" -PercentComplete $percentComplete -Id $totalCount
+
             $progressTable.Keys | %{
-                $progressSplate = $progressTable[$_]
-                Write-Progress @progressSplate -ParentId 255
+                $progressSplat = $progressTable[$_]
+                Write-Progress @progressSplat -ParentId $totalCount
             }
-            Start-Sleep -Milliseconds 250
+            Start-Sleep -Milliseconds 100
         }
+
+        # set all progresses to completed
+        $progressTable.Keys | %{
+            $id = $_
+            Write-Progress -Id $id -ParentId $totalCount -Completed
+        }
+        Write-Progress -Id $totalCount -Completed
+
+        # return the results from the jobs
         $jobs.ChildJobs.Output
     }
 }
