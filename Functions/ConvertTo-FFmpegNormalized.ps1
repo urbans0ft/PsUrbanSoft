@@ -1,4 +1,5 @@
 function ConvertTo-FFmpegNormalized {
+    #  Get-FFmpegLoudNorm -InputUrl 'input.wav' -IntegratedLoudness -16 -DualMono
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
@@ -15,17 +16,20 @@ function ConvertTo-FFmpegNormalized {
     )
     
     begin {
-        [Collections.ArrayList]$inputObjects = @()
     }
     
     process {
-        [void]$inputObjects.Add($InputFile)
+        $loudNorm      = Get-FFmpegLoudNorm -InputUrl $InputFile -IntegratedLoudness $IntegratedLoudness -LoudnessRange $LoudnessRange -TruePeak $TruePeak -DualMono:$DualMono
+        $input_i       = $loudNorm.input_i
+        $input_tp      = $loudNorm.input_tp
+        $input_lra     = $loudNorm.input_lra
+        $input_thresh  = $loudNorm.input_thresh
+        $target_offset = $loudNorm.target_offset
+        Write-Host "& ffmpeg -i $InputFile -af ""loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}"" output.m4a"
+        & ffmpeg -i $InputFile -af "loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}" output.m4a
     }
     
     end {
-        $parallelBlock = [scriptblock] {
-            
-        }
-        $inputObjects | ForEach-Object -Parallel $parallelBlock
+        
     }
 }
