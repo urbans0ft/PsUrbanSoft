@@ -21,3 +21,8 @@ Write-Host "Invoke PSCustomObject multiple example:" -ForegroundColor Cyan
 [PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') },
 [PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') } |
 Invoke-ParallelCommand
+
+Write-Host "Invoke PSCustomObject multiple different commands example:" -ForegroundColor Cyan
+[PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') },
+[PSCustomObject]@{Command = 'echo'; ArgumentList = @('Hallo Welt!') } |
+Invoke-ParallelCommand

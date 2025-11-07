@@ -25,6 +25,11 @@ function Invoke-ParallelCommand {
     .EXAMPLE
         [PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') } | Invoke-ParallelCommand
 
+    .EXAMPLE
+        [PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') },
+        [PSCustomObject]@{Command = 'ffmpeg'; ArgumentList = @('-i', 'audio.m4a', '-vn', '-filter:a', 'loudnorm=I=-24:LRA=7:TP=-2:dual_mono=false:print_format=json', '-f', 'null', '-') } |
+        Invoke-ParallelCommand
+
     #>
     [CmdletBinding(DefaultParameterSetName = 'CommandByParameter')]
     param (
@@ -51,7 +56,7 @@ function Invoke-ParallelCommand {
         Write-Host "`$PSBoundParameters.ContainsKey('Command')           = '$($PSBoundParameters.ContainsKey("Command"))'" -ForegroundColor Magenta
         Write-Host "`$PSBoundParameters.ContainsKey('PipelineArguments') = '$($PSBoundParameters.ContainsKey("PipelineArguments"))'" -ForegroundColor Magenta
         Write-Host "`$PSBoundParameters.ContainsKey('ArgumentList')      = '$($PSBoundParameters.ContainsKey("ArgumentList"))'" -ForegroundColor Magenta
-        [Collections.ArrayList]$argumentLists = @()
+        [Collections.ArrayList]$commandList = @()
 
     }
     
@@ -62,25 +67,30 @@ function Invoke-ParallelCommand {
         Write-Host "`$PipelineArguments                      = '$PipelineArguments'" -ForegroundColor Yellow
         Write-Host "`$ArgumentList                           = '$ArgumentList'" -ForegroundColor Yellow
         Write-Host "`$Command.GetType()                      = '$($Command.GetType())'" -ForegroundColor Yellow
-        Write-Host "`$PipelineArguments.GetType()            = '$($PipelineArguments.GetType())'" -ForegroundColor Yellow
-        Write-Host "`$ArgumentList.GetType()                 = '$($ArgumentList.GetType())'" -ForegroundColor Yellow
+        Write-Host "`$PipelineArguments.GetType()            = '$($PipelineArguments ? $PipelineArguments.GetType() : 'undefined')'" -ForegroundColor Yellow
+        Write-Host "`$ArgumentList.GetType()                 = '$($ArgumentList ? $ArgumentList.GetType() : 'undefined')'" -ForegroundColor Yellow
         Write-Host "`$Command           -is [PSCustomObject]   '$($Command -is [PSCustomObject])'" -ForegroundColor Yellow
         Write-Host "`$PipelineArguments -is [PSCustomObject]   '$($PipelineArguments -is [PSCustomObject])'" -ForegroundColor Yellow
         Write-Host "`$ArgumentList      -is [PSCustomObject]   '$($ArgumentList -is [PSCustomObject])'" -ForegroundColor Yellow
 
-        [void]$argumentLists.Add($PipelineArguments)
+        [void]$commandList.Add(
+            [PSCustomObject]@{
+                Command        = $Command
+                ArgumentList   = $ArgumentList + $PipelineArguments
+            }
+        )
 
     }
 
     end {
 
         # Pipeline input: combine each pipeline item with ArgumentList
-        $argumentLists | ForEach-Object {
-            $pipelineArgs = $_
-            $combinedArgs = $pipelineArgs + $ArgumentList
-            Write-Host "& $Command $combinedArgs" -ForegroundColor Green
+        $commandList | ForEach-Object {
+            $command      = $_.Command
+            $argumentList = $_.ArgumentList
+            Write-Host "& $Command $argumentList" -ForegroundColor Green
 
-            # & $Command $combinedArgs
+            #& $Command $argumentList
         }
 
     }
