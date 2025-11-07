@@ -85,12 +85,12 @@ function Invoke-ParallelCommand {
     end {
 
         # Pipeline input: combine each pipeline item with ArgumentList
-        $commandList | ForEach-Object {
+        $commandList | ForEach-Object -Parallel {
             $command      = $_.Command
             $argumentList = $_.ArgumentList
             Write-Host "& $Command $argumentList" -ForegroundColor Green
 
-            #& $Command $argumentList
+            & $Command $argumentList
         }
 
     }
