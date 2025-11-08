@@ -84,13 +84,29 @@ function Invoke-ParallelCommand {
 
     end {
 
-        # Pipeline input: combine each pipeline item with ArgumentList
-        $commandList | ForEach-Object -Parallel {
+        $jobs = $commandList | ForEach-Object -Parallel {
             $command      = $_.Command
             $argumentList = $_.ArgumentList
-            Write-Host "& $Command $argumentList" -ForegroundColor Green
+            Write-Host "& $command $argumentList" -ForegroundColor Green
 
-            & $Command $argumentList
+            & $command $argumentList
+        } -AsJob
+
+        #$jobs.ChildJobs | ForEach-Object {
+        #   $job = $_
+        #    Register-ObjectEvent -InputObject $job -EventName StateChanged -Action {
+        #        Write-Progress -Activity "Activity" -Status "Status" -Id $job.id -CurrentOperation "CurrentOperation" -ParentId 0
+        #        if ($Sender.State -eq 'Completed') {$EventSubscriber | Unregister-Event}
+        #    }
+        #}
+
+        $totalJobCount = $commandList.Count
+        while ($jobs.State -ne 'Completed') {
+            $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
+            $percentComplete = [int](($totalCompletedJobCount * 100 / $totalJobCount))
+            Write-Host "Completed $totalCompletedJobCount / $totalJobCount ($percentComplete%)" -ForegroundColor Cyan
+            Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id 0 -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
+            Start-Sleep -Milliseconds 250
         }
 
     }
