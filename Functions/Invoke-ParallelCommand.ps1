@@ -92,7 +92,7 @@ function Invoke-ParallelCommand {
                 Activity         = "Activity"
                 Status           = "Status: $($_)"
                 Id               = $_
-                CurrentOperation = "CurrentOperation"
+                CurrentOperation = "NotStarted" # https://learn.microsoft.com/en-us/dotnet/api/system.management.automation.jobstate?view=powershellsdk-7.4.0
                 ParentId         = $totalJobCount
                 PercentComplete  = 0
             }
@@ -106,15 +106,16 @@ function Invoke-ParallelCommand {
 
             $writeProgressHashtable[$_].Activity         = "Executing $command"
             $writeProgressHashtable[$_].Status           = "Processing item $($_)"
-            $writeProgressHashtable[$_].CurrentOperation = "CurrentOperation"
+            $writeProgressHashtable[$_].CurrentOperation = "Running"
             $writeProgressHashtable[$_].PercentComplete  = 50
-
+            
             Write-Host "& $command $argumentList" -ForegroundColor Green
-
+            
             & $command $argumentList
-
-            $writeProgressHashtable[$_].PercentComplete = 100
-            $writeProgressHashtable[$_].Completed       = $true
+            
+            $writeProgressHashtable[$_].CurrentOperation = "Completed"
+            $writeProgressHashtable[$_].PercentComplete  = 100
+            $writeProgressHashtable[$_].Completed        = $true
         } -AsJob
 
         # $jobs.ChildJobs | ForEach-Object {
@@ -135,7 +136,9 @@ function Invoke-ParallelCommand {
             Start-Sleep -Milliseconds 250
             $writeProgressHashtable.Keys | %{
                 $progressSplat = $writeProgressHashtable[$_]
-                Write-Progress @progressSplat
+                if ($progressSplat.CurrentOperation -ne 'NotStarted') {
+                    Write-Progress @progressSplat
+                }
             }
         }
 
