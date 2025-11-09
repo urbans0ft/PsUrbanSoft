@@ -51,27 +51,27 @@ function Invoke-ParallelCommand {
             throw "PipelineArguments can only be provided via pipeline input."
         }
 
-        Write-Host "`nBeginning pipeline processing..." -ForegroundColor Cyan
-        Write-Host "`$PSCmdlet.ParameterSetName                          = '$($PSCmdlet.ParameterSetName)'" -ForegroundColor Magenta
-        Write-Host "`$PSBoundParameters.ContainsKey('Command')           = '$($PSBoundParameters.ContainsKey("Command"))'" -ForegroundColor Magenta
-        Write-Host "`$PSBoundParameters.ContainsKey('PipelineArguments') = '$($PSBoundParameters.ContainsKey("PipelineArguments"))'" -ForegroundColor Magenta
-        Write-Host "`$PSBoundParameters.ContainsKey('ArgumentList')      = '$($PSBoundParameters.ContainsKey("ArgumentList"))'" -ForegroundColor Magenta
+        Write-Verbose "`nBeginning pipeline processing..."
+        Write-Verbose "`$PSCmdlet.ParameterSetName                          = '$($PSCmdlet.ParameterSetName)'"
+        Write-Verbose "`$PSBoundParameters.ContainsKey('Command')           = '$($PSBoundParameters.ContainsKey("Command"))'"
+        Write-Verbose "`$PSBoundParameters.ContainsKey('PipelineArguments') = '$($PSBoundParameters.ContainsKey("PipelineArguments"))'"
+        Write-Verbose "`$PSBoundParameters.ContainsKey('ArgumentList')      = '$($PSBoundParameters.ContainsKey("ArgumentList"))'"
         [Collections.ArrayList]$commandList = @()
 
     }
     
     process {
 
-        Write-Host "`nProcessing pipeline item..." -ForegroundColor Cyan
-        Write-Host "`$Command                                = '$Command'" -ForegroundColor Yellow
-        Write-Host "`$PipelineArguments                      = '$PipelineArguments'" -ForegroundColor Yellow
-        Write-Host "`$ArgumentList                           = '$ArgumentList'" -ForegroundColor Yellow
-        Write-Host "`$Command.GetType()                      = '$($Command.GetType())'" -ForegroundColor Yellow
-        Write-Host "`$PipelineArguments.GetType()            = '$($PipelineArguments ? $PipelineArguments.GetType() : 'undefined')'" -ForegroundColor Yellow
-        Write-Host "`$ArgumentList.GetType()                 = '$($ArgumentList ? $ArgumentList.GetType() : 'undefined')'" -ForegroundColor Yellow
-        Write-Host "`$Command           -is [PSCustomObject]   '$($Command -is [PSCustomObject])'" -ForegroundColor Yellow
-        Write-Host "`$PipelineArguments -is [PSCustomObject]   '$($PipelineArguments -is [PSCustomObject])'" -ForegroundColor Yellow
-        Write-Host "`$ArgumentList      -is [PSCustomObject]   '$($ArgumentList -is [PSCustomObject])'" -ForegroundColor Yellow
+        Write-Verbose "`nProcessing pipeline item..."
+        Write-Verbose "`$Command                                = '$Command'"
+        Write-Verbose "`$PipelineArguments                      = '$PipelineArguments'"
+        Write-Verbose "`$ArgumentList                           = '$ArgumentList'"
+        Write-Verbose "`$Command.GetType()                      = '$($Command.GetType())'"
+        Write-Verbose "`$PipelineArguments.GetType()            = '$($PipelineArguments ? $PipelineArguments.GetType() : 'undefined')'"
+        Write-Verbose "`$ArgumentList.GetType()                 = '$($ArgumentList ? $ArgumentList.GetType() : 'undefined')'"
+        Write-Verbose "`$Command           -is [PSCustomObject]   '$($Command -is [PSCustomObject])'"
+        Write-Verbose "`$PipelineArguments -is [PSCustomObject]   '$($PipelineArguments -is [PSCustomObject])'"
+        Write-Verbose "`$ArgumentList      -is [PSCustomObject]   '$($ArgumentList -is [PSCustomObject])'"
 
         [void]$commandList.Add(
             [PSCustomObject]@{
@@ -110,12 +110,25 @@ function Invoke-ParallelCommand {
             $writeProgressHashtable[$_].PercentComplete  = 50
             
             Write-Host "& $command $argumentList" -ForegroundColor Green
+            $stdouterr       = & $command $argumentList 2>&1
+            $successful      = $LASTEXITCODE -eq 0
+            $stdout, $stderr = $stdouterr.Where({$_ -isnot [System.Management.Automation.ErrorRecord]}, 'Split')
+            $stdout | ForEach-Object { $Host.UI.WriteLine($_) }
+            #$stdout | Write-Information
+            $thisJob.Error += $stderr
+            #$stderr | Write-Error
+            if (-not $successful) {
+                $writeProgressHashtable[$_].CurrentOperation = "Failed"
+            }
+            else {
+                $writeProgressHashtable[$_].CurrentOperation = "Completed"
+            }
             
-            & $command $argumentList
-            
-            $writeProgressHashtable[$_].CurrentOperation = "Completed"
             $writeProgressHashtable[$_].PercentComplete  = 100
             $writeProgressHashtable[$_].Completed        = $true
+            throw "test"
+
+            "Hallo Welt!"
         } -AsJob
 
         # $jobs.ChildJobs | ForEach-Object {
@@ -129,12 +142,11 @@ function Invoke-ParallelCommand {
         #     }
         # }
 
-        while ($jobs.State -ne 'Completed') {
+        while ($false -eq $jobs.Finished.WaitOne(250)) {
             $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
             $percentComplete = [int](($totalCompletedJobCount * 100 / $totalJobCount))
             Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id $totalJobCount -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
-            Start-Sleep -Milliseconds 250
-            $writeProgressHashtable.Keys | %{
+            $writeProgressHashtable.Keys | ForEach-Object {
                 $progressSplat = $writeProgressHashtable[$_]
                 if ($progressSplat.CurrentOperation -ne 'NotStarted') {
                     Write-Progress @progressSplat
@@ -142,6 +154,7 @@ function Invoke-ParallelCommand {
             }
         }
 
+        $jobs
     }
 
 }
