@@ -84,29 +84,59 @@ function Invoke-ParallelCommand {
 
     end {
 
-        $jobs = $commandList | ForEach-Object -Parallel {
-            $command      = $_.Command
-            $argumentList = $_.ArgumentList
+        $totalJobCount = $commandList.Count
+
+        $writeProgressHashtable = @{}
+        0..($commandList.Count - 1) | ForEach-Object {
+            $writeProgressHashtable[$_] = @{
+                Activity         = "Activity"
+                Status           = "Status: $($_)"
+                Id               = $_
+                CurrentOperation = "CurrentOperation"
+                ParentId         = $totalJobCount
+                PercentComplete  = 0
+            }
+        }
+
+        $jobs = 0..($commandList.Count - 1) | ForEach-Object -Parallel {
+            $local:writeProgressHashtable = $using:writeProgressHashtable
+            $local:commandList            = $using:commandList
+            $command                      = $commandList[$_].Command
+            $argumentList                 = $commandList[$_].ArgumentList
+
+            $writeProgressHashtable[$_].Activity         = "Executing $command"
+            $writeProgressHashtable[$_].Status           = "Processing item $($_)"
+            $writeProgressHashtable[$_].CurrentOperation = "CurrentOperation"
+            $writeProgressHashtable[$_].PercentComplete  = 50
+
             Write-Host "& $command $argumentList" -ForegroundColor Green
 
             & $command $argumentList
+
+            $writeProgressHashtable[$_].PercentComplete = 100
+            $writeProgressHashtable[$_].Completed       = $true
         } -AsJob
 
-        #$jobs.ChildJobs | ForEach-Object {
-        #   $job = $_
-        #    Register-ObjectEvent -InputObject $job -EventName StateChanged -Action {
-        #        Write-Progress -Activity "Activity" -Status "Status" -Id $job.id -CurrentOperation "CurrentOperation" -ParentId 0
-        #        if ($Sender.State -eq 'Completed') {$EventSubscriber | Unregister-Event}
-        #    }
-        #}
+        # $jobs.ChildJobs | ForEach-Object {
+        #    $job = $_
+        #    Write-Host "Registering event for Job Id: $($job.Id)" -ForegroundColor Cyan
+        #     Register-ObjectEvent -InputObject $job -EventName StateChanged -Action {
+        #         $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
+        #         $percentComplete = [int](($totalCompletedJobCount * 100 / $totalJobCount))
+        #         Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id 0 -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
+        #         if ($Sender.State -eq 'Completed') {$EventSubscriber | Unregister-Event}
+        #     }
+        # }
 
-        $totalJobCount = $commandList.Count
         while ($jobs.State -ne 'Completed') {
             $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
             $percentComplete = [int](($totalCompletedJobCount * 100 / $totalJobCount))
-            Write-Host "Completed $totalCompletedJobCount / $totalJobCount ($percentComplete%)" -ForegroundColor Cyan
-            Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id 0 -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
+            Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id $totalJobCount -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
             Start-Sleep -Milliseconds 250
+            $writeProgressHashtable.Keys | %{
+                $progressSplat = $writeProgressHashtable[$_]
+                Write-Progress @progressSplat
+            }
         }
 
     }
