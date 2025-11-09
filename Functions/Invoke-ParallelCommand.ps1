@@ -99,34 +99,33 @@ function Invoke-ParallelCommand {
         }
 
         $jobs = 0..($commandList.Count - 1) | ForEach-Object -Parallel {
+            $Index                        = $_
+            $local:VerbosePreference      = $using:VerbosePreference
             $local:writeProgressHashtable = $using:writeProgressHashtable
             $local:commandList            = $using:commandList
-            $command                      = $commandList[$_].Command
-            $argumentList                 = $commandList[$_].ArgumentList
-
-            $writeProgressHashtable[$_].Activity         = "Executing $command"
-            $writeProgressHashtable[$_].Status           = "Processing item $($_)"
-            $writeProgressHashtable[$_].CurrentOperation = "Running"
-            $writeProgressHashtable[$_].PercentComplete  = 50
+            $command                      = $commandList[$Index].Command
+            $argumentList                 = $commandList[$Index].ArgumentList
+            $writeProgressHashtable[$Index].Activity         = "Executing $command"
+            $writeProgressHashtable[$Index].Status           = "Processing item $($Index)"
+            $writeProgressHashtable[$Index].CurrentOperation = "Running"
+            $writeProgressHashtable[$Index].PercentComplete  = 50
             
-            Write-Host "& $command $argumentList" -ForegroundColor Green
+            Write-Verbose "& $command $argumentList"
             $stdouterr       = & $command $argumentList 2>&1
             $successful      = $LASTEXITCODE -eq 0
             $stdout, $stderr = $stdouterr.Where({$_ -isnot [System.Management.Automation.ErrorRecord]}, 'Split')
-            $stdout | ForEach-Object { $Host.UI.WriteLine($_) }
-            #$stdout | Write-Information
-            $thisJob.Error += $stderr
-            #$stderr | Write-Error
+            $stdout | ForEach-Object { Write-Host $_ }
+            $stderr | ForEach-Object { Write-Error $_ }
+            
             if (-not $successful) {
-                $writeProgressHashtable[$_].CurrentOperation = "Failed"
+                $writeProgressHashtable[$Index].CurrentOperation = "Failed"
             }
             else {
-                $writeProgressHashtable[$_].CurrentOperation = "Completed"
+                $writeProgressHashtable[$Index].CurrentOperation = "Completed"
             }
             
-            $writeProgressHashtable[$_].PercentComplete  = 100
-            $writeProgressHashtable[$_].Completed        = $true
-            throw "test"
+            $writeProgressHashtable[$Index].PercentComplete  = 100
+            $writeProgressHashtable[$Index].Completed        = $true
 
             "Hallo Welt!"
         } -AsJob
