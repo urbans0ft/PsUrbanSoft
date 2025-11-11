@@ -51,27 +51,27 @@ function Invoke-ParallelCommand {
             throw "PipelineArguments can only be provided via pipeline input."
         }
 
-        Write-Verbose "`nBeginning pipeline processing..."
-        Write-Verbose "`$PSCmdlet.ParameterSetName                          = '$($PSCmdlet.ParameterSetName)'"
-        Write-Verbose "`$PSBoundParameters.ContainsKey('Command')           = '$($PSBoundParameters.ContainsKey("Command"))'"
-        Write-Verbose "`$PSBoundParameters.ContainsKey('PipelineArguments') = '$($PSBoundParameters.ContainsKey("PipelineArguments"))'"
-        Write-Verbose "`$PSBoundParameters.ContainsKey('ArgumentList')      = '$($PSBoundParameters.ContainsKey("ArgumentList"))'"
+        Write-Debug "`nBeginning pipeline processing..."
+        Write-Debug "`$PSCmdlet.ParameterSetName                          = '$($PSCmdlet.ParameterSetName)'"
+        Write-Debug "`$PSBoundParameters.ContainsKey('Command')           = '$($PSBoundParameters.ContainsKey("Command"))'"
+        Write-Debug "`$PSBoundParameters.ContainsKey('PipelineArguments') = '$($PSBoundParameters.ContainsKey("PipelineArguments"))'"
+        Write-Debug "`$PSBoundParameters.ContainsKey('ArgumentList')      = '$($PSBoundParameters.ContainsKey("ArgumentList"))'"
         [Collections.ArrayList]$commandList = @()
 
     }
     
     process {
 
-        Write-Verbose "`nProcessing pipeline item..."
-        Write-Verbose "`$Command                                = '$Command'"
-        Write-Verbose "`$PipelineArguments                      = '$PipelineArguments'"
-        Write-Verbose "`$ArgumentList                           = '$ArgumentList'"
-        Write-Verbose "`$Command.GetType()                      = '$($Command.GetType())'"
-        Write-Verbose "`$PipelineArguments.GetType()            = '$($PipelineArguments ? $PipelineArguments.GetType() : 'undefined')'"
-        Write-Verbose "`$ArgumentList.GetType()                 = '$($ArgumentList ? $ArgumentList.GetType() : 'undefined')'"
-        Write-Verbose "`$Command           -is [PSCustomObject]   '$($Command -is [PSCustomObject])'"
-        Write-Verbose "`$PipelineArguments -is [PSCustomObject]   '$($PipelineArguments -is [PSCustomObject])'"
-        Write-Verbose "`$ArgumentList      -is [PSCustomObject]   '$($ArgumentList -is [PSCustomObject])'"
+        Write-Debug "`nProcessing pipeline item..."
+        Write-Debug "`$Command                                = '$Command'"
+        Write-Debug "`$PipelineArguments                      = '$PipelineArguments'"
+        Write-Debug "`$ArgumentList                           = '$ArgumentList'"
+        Write-Debug "`$Command.GetType()                      = '$($Command.GetType())'"
+        Write-Debug "`$PipelineArguments.GetType()            = '$($PipelineArguments ? $PipelineArguments.GetType() : 'undefined')'"
+        Write-Debug "`$ArgumentList.GetType()                 = '$($ArgumentList ? $ArgumentList.GetType() : 'undefined')'"
+        Write-Debug "`$Command           -is [PSCustomObject]   '$($Command -is [PSCustomObject])'"
+        Write-Debug "`$PipelineArguments -is [PSCustomObject]   '$($PipelineArguments -is [PSCustomObject])'"
+        Write-Debug "`$ArgumentList      -is [PSCustomObject]   '$($ArgumentList -is [PSCustomObject])'"
 
         [void]$commandList.Add(
             [PSCustomObject]@{
