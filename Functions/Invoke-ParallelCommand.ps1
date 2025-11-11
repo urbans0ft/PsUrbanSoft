@@ -112,7 +112,8 @@ function Invoke-ParallelCommand {
             
             Write-Verbose "& $command $argumentList"
             $stdouterr       = & $command $argumentList 2>&1
-            $successful      = $LASTEXITCODE -eq 0
+            $exitCode        = $LASTEXITCODE
+            $successful      = $exitCode -eq 0
             $stdout, $stderr = $stdouterr.Where({$_ -isnot [System.Management.Automation.ErrorRecord]}, 'Split')
             $stdout | ForEach-Object { Write-Host $_ }
             $stderr | ForEach-Object { Write-Error $_ }
@@ -127,19 +128,11 @@ function Invoke-ParallelCommand {
             $writeProgressHashtable[$Index].PercentComplete  = 100
             $writeProgressHashtable[$Index].Completed        = $true
 
-            "Hallo Welt!"
-        } -AsJob
+            if (-not $successful) {
+                throw "'$command' command no. $Index failed with exit code $exitCode."
+            }
 
-        # $jobs.ChildJobs | ForEach-Object {
-        #    $job = $_
-        #    Write-Host "Registering event for Job Id: $($job.Id)" -ForegroundColor Cyan
-        #     Register-ObjectEvent -InputObject $job -EventName StateChanged -Action {
-        #         $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
-        #         $percentComplete = [int](($totalCompletedJobCount * 100 / $totalJobCount))
-        #         Write-Progress -Activity "Parent Activity" -Status "${totalCompletedJobCount} / ${totalJobCount} (${percentComplete}%)" -Id 0 -CurrentOperation "CurrentOperation" -ParentId -1 -PercentComplete $percentComplete
-        #         if ($Sender.State -eq 'Completed') {$EventSubscriber | Unregister-Event}
-        #     }
-        # }
+        } -AsJob
 
         while ($false -eq $jobs.Finished.WaitOne(250)) {
             $totalCompletedJobCount = $jobs.ChildJobs | Where-Object { $_.State -eq 'Completed' } | Measure-Object | Select-Object -ExpandProperty Count
