@@ -3,5 +3,3 @@
 *.ps1  text eol=crlf
 *.psd1 text eol=crlf
 *.psm1 text eol=crlf
-
-# git ls-files | xargs -n1 git check-attr eol | grep -E 'eol: (cr)?lf' | awk -F": " '{ if ($3=="lf") system("echo 1" $1); else system("echo 2" $1) }'
