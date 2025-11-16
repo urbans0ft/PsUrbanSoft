@@ -4,7 +4,7 @@ function ConvertTo-FFmpegNormalized {
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
         [string]$InputFile,
-        [Parameter()]
+        [Parameter(Mandatory)]
         [string]$OutputFile,
         [ValidateRange(-70.0, -5.0)]
         [double]$IntegratedLoudness = -24,
@@ -16,20 +16,31 @@ function ConvertTo-FFmpegNormalized {
     )
     
     begin {
+        [Collections.ArrayList]$inputObjects = @()
     }
     
     process {
-        $loudNorm      = Get-FFmpegLoudNorm -InputUrl $InputFile -IntegratedLoudness $IntegratedLoudness -LoudnessRange $LoudnessRange -TruePeak $TruePeak -DualMono:$DualMono
-        $input_i       = $loudNorm.input_i
-        $input_tp      = $loudNorm.input_tp
-        $input_lra     = $loudNorm.input_lra
-        $input_thresh  = $loudNorm.input_thresh
-        $target_offset = $loudNorm.target_offset
-        Write-Host "& ffmpeg -i $InputFile -af ""loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}"" output.m4a"
-        & ffmpeg -i $InputFile -af "loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}" output.m4a
+        [void]$inputObjects.Add($InputFile)
     }
     
     end {
+        $loudNorms     = $inputObjects | Get-FFmpegLoudNorm -IntegratedLoudness $IntegratedLoudness -LoudnessRange $LoudnessRange -TruePeak $TruePeak -DualMono:$DualMono
+        $commandArgs   = $loudNorms | ForEach-Object {
+            $filePath      = $_.input
+            $input_i       = $_.input_i
+            $input_tp      = $_.input_tp
+            $input_lra     = $_.input_lra
+            $input_thresh  = $_.input_thresh
+            $target_offset = $_.target_offset
+            Write-Output @(
+                '-i',
+                $filePath,
+                '-af',
+                "loudnorm=I=${IntegratedLoudness}:LRA=${LoudnessRange}:TP=${TruePeak}:dual_mono=$($DualMono.ToString().ToLower()):measured_I=${input_i}:measured_LRA=${input_lra}:measured_TP=${input_tp}:measured_thresh=${input_thresh}:offset=${target_offset}",
+                $OutputFile
+            ) -NoEnumerate
+        }
+        $commandArgs | Invoke-ParallelCommand -Command 'ffmpeg'
         
     }
 }
