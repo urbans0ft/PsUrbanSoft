@@ -31,7 +31,7 @@ function Invoke-ParallelCommand {
         Invoke-ParallelCommand
 
     #>
-    [CmdletBinding(DefaultParameterSetName = 'CommandByParameter')]
+    [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'CommandByParameter')]
     param (
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CommandByParameter')]
         [Parameter(Mandatory = $true, ValueFromPipelineByPropertyName, ParameterSetName = 'CommandByPipeline')]
@@ -100,6 +100,7 @@ function Invoke-ParallelCommand {
 
         $jobs = 0..($commandList.Count - 1) | ForEach-Object -Parallel {
             $Index                        = $_
+            $Local:WhatIfPreference       = $using:WhatIfPreference
             $local:VerbosePreference      = $using:VerbosePreference
             $local:writeProgressHashtable = $using:writeProgressHashtable
             $local:commandList            = $using:commandList
