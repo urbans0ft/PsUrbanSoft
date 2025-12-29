@@ -15,6 +15,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md with version
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          
+          $changelogPath = ".\CHANGELOG.md"
+          
+          # Read changelog and replace [Unreleased] with actual version
+          $changelogContent = Get-Content $changelogPath | %{($_ -ceq '## [Unreleased]') ? "## [Unreleased]`n`n## [$version]" : $_}
+          
+          # Write back to file
+          Set-Content -Path $changelogPath -Value $changelogContent -NoNewline
+          
+          Write-Host "Updated CHANGELOG.md: [Unreleased] -> [$version]"
 
       - name: Package PowerShell Module
         shell: pwsh
@@ -45,3 +63,25 @@ jobs:
           files: PsUrbanSoft-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push changes
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+
+          # Only proceed if tag matches semantic version pattern
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Host "Won't push back '$version' to changelog, since it's not a core version."
+            exit 0
+          }
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG.md for release $version"
+          git push origin HEAD:main
+          
+          Write-Host "Committed and pushed CHANGELOG.md update to main branch"
+
+
