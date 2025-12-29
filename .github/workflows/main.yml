@@ -53,6 +53,26 @@ jobs:
           
           Write-Host "Created package: $packagePath"
 
+      - name: Extract release notes from CHANGELOG
+        shell: pwsh
+        run: |
+          $changelogPath = ".\CHANGELOG.md"
+          $content = Get-Content $changelogPath -Raw
+          
+          # Extract content between [Unreleased] and the next ## heading
+          if ($content -match '(?s)## \[Unreleased\](.*?)(?=\n## |\z)') {
+            $releaseNotes = $matches[1].Trim()
+            
+            # Save to file for use in release
+            Set-Content -Path ".\release_notes.md" -Value $releaseNotes
+            
+            Write-Host "Extracted release notes from CHANGELOG.md"
+            Write-Host $releaseNotes
+          } else {
+            Write-Host "No [Unreleased] section found in CHANGELOG.md"
+            Set-Content -Path ".\release_notes.md" -Value ""
+          }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -61,6 +81,7 @@ jobs:
           draft: false
           prerelease: false
           files: PsUrbanSoft-*.zip
+          body_path: release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
