@@ -30,7 +30,7 @@ jobs:
           $changelogContent = Get-Content $changelogPath | %{($_ -ceq '## [Unreleased]') ? "## [Unreleased]`n`n## [$version]" : $_}
           
           # Write back to file
-          Set-Content -Path $changelogPath -Value $changelogContent -NoNewline
+          Set-Content -Path $changelogPath -Value $changelogContent
           
           Write-Host "Updated CHANGELOG.md: [Unreleased] -> [$version]"
 
