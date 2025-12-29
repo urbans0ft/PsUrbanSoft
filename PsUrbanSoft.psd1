@@ -74,6 +74,9 @@ FunctionsToExport = @(
     'Get-RegistryKey',
     'Get-UserInput',
     'Show-MessageBox',
+    'ConvertTo-FFmpegNormalized',
+    'Invoke-ParallelCommand',
+    'get-FFmpegLoudNorm',
     'Set-RegistryKey'
 )
 

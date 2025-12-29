@@ -1,4 +1,4 @@
 # Load all module function (ps1-scripts) from the 'Functions' folder.
-Get-ChildItem -Path (Join-Path $PSScriptRoot 'Functions') -Filter *.ps1  -Recurse | ForEach-Object {
+Get-ChildItem -Path (Join-Path $PSScriptRoot 'Functions') -Filter *.ps1  -Recurse -Exclude 'Test-ParallelCommand.ps1' | ForEach-Object {
     . $_.FullName
 }

@@ -50,7 +50,7 @@ function ConvertTo-FFmpegNormalized {
             }
             Write-Output $arguments -NoEnumerate
         }
-        $commandArgs | Invoke-ParallelCommand -Command 'ffmpeg'
+        , $commandArgs | Invoke-ParallelCommand -Command 'ffmpeg'
         
     }
 }
