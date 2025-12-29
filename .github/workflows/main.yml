@@ -16,6 +16,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Package PowerShell Module
+        shell: pwsh
+        run: |
+          $moduleName = "PsUrbanSoft"
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $packagePath = ".\$moduleName-$version.zip"
+          
+          # Create package with module files
+          Compress-Archive -Path @(
+            ".\$moduleName.psd1",
+            ".\$moduleName.psm1",
+            ".\Functions",
+            ".\README.md",
+            ".\LICENSE",
+            ".\CHANGELOG.md"
+          ) -DestinationPath $packagePath -Force
+          
+          Write-Host "Created package: $packagePath"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -23,5 +42,6 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
+          files: PsUrbanSoft-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
