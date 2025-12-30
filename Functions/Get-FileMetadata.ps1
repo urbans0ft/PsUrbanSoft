@@ -46,41 +46,78 @@ function Get-FileMetadata {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory, ValueFromPipeline)]
-        [string]$Path
+        [string]$Path,
+        [Parameter()]
+        [object[]]$Property
     )
     begin {
         $inputObjects = @()
-        $shell  = New-Object -ComObject Shell.Application
+        $shell = New-Object -ComObject Shell.Application
     }
     process {
-        if (-not (Test-Path -Path $Path)) {
-            Write-Error "The specified path '$Path' does not exist."
+        if (-not (Test-Path -Path $Path -PathType Leaf)) {
+            Write-Error "The specified path '$Path' does not exist or is not a file."
             return
         }
         $inputObjects += Get-Item $Path
     }
     end {
-        $inputObjects | ForEach-Object {
-            $file = $_
+        # create a distinct list of folders to optimize Shell COM calls
+        $folderList = 
+        $inputObjects |
+        ForEach-Object { $_.Directory.FullName } |
+        Group-Object -NoElement |
+        Select-Object -ExpandProperty Name |
+        Sort-Object Name
+        
+        # build a folder detail dictionary
+        $folderDetailDict = @{}
+        $folderList |
+        ForEach-Object {
+            $dirPath = $_
+            $folder = $shell.NameSpace($dirPath)
+            $propTable = @{}
+            0..400 | ForEach-Object {
+                $idx = $_
+                $name = $folder.GetDetailsOf($null, $idx)
+                if ($name) { $propTable[$idx] = $name }
+            }
+            $folderDetailDict[$dirPath] = [PSCustomObject]@{
+                folder     = $folder
+                properties = $propTable
+            }
+        }
 
-            # Get folder and file via Shell COM
-            $folder = $shell.NameSpace($file.Directory.FullName)
-            $item   = $folder.ParseName($file.Name)
-    
-            # Build a list of "Details" columns (index + name + value)
-            $props = 0..400 | ForEach-Object {
-                $name = $folder.GetDetailsOf($null, $_)
-                if ($name) {
+        # iterate over input files and get metadata
+        $inputObjects | Select-Object -First 2 |
+        ForEach-Object {
+            $file         = $_
+            $folderPath   = $file.Directory.FullName
+            $detailHelper = $folderDetailDict[$folderPath]
+            $folder       = $detailHelper.folder          # get folder com object
+            $item         = $folder.ParseName($file.Name) # get folder item com object
+            $propTable    = $detailHelper.properties
+
+            # for each property, get the value
+            $propertyList = 
+            $propTable.GetEnumerator() |
+            ForEach-Object {
+                $idx  = $_.Key
+                $name = $_.Value
+
+                $value = $folder.GetDetailsOf($item, $idx)
+                if (-not [string]::IsNullOrWhiteSpace($value))
+                {
                     [PSCustomObject]@{
-                        Index = $_
+                        Index = $idx
                         Name  = $name
-                        Value = $folder.GetDetailsOf($item, $_)
+                        Value = $value
                     }
                 }
             }
-    
-            $props | Where-Object Value | Sort-Object Index
+            Write-Output $propertyList -NoEnumerate
         }
+    
     }
 }
 
