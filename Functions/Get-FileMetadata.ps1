@@ -80,7 +80,16 @@ function Get-FileMetadata {
             0..400 | ForEach-Object {
                 $idx = $_
                 $name = $folder.GetDetailsOf($null, $idx)
-                if ($name) { $propTable[$idx] = $name }
+                if ($name) {
+                    if ($PSBoundParameters.ContainsKey('Property')) {
+                        if ($Property -contains $name) {
+                            $propTable[$idx] = $name
+                        }
+                    }
+                    else {
+                        $propTable[$idx] = $name
+                    }
+                }
             }
             $folderDetailDict[$dirPath] = [PSCustomObject]@{
                 folder     = $folder
@@ -89,7 +98,7 @@ function Get-FileMetadata {
         }
 
         # iterate over input files and get metadata
-        $inputObjects | Select-Object -First 2 |
+        $inputObjects |
         ForEach-Object {
             $file         = $_
             $folderPath   = $file.Directory.FullName
@@ -117,7 +126,6 @@ function Get-FileMetadata {
             }
             Write-Output $propertyList -NoEnumerate
         }
-    
     }
 }
 
