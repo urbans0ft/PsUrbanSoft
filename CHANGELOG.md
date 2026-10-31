@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Speed-up `Get-FileMetadata`
+- `Get-FileMetadata`
+    - Speed-up
+    - Get only desired properties
 
 ## [0.1.0]
 
